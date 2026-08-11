@@ -71,6 +71,14 @@ public final class Freeze {
                         player.getYRot(), player.getXRot());
             }
 
+            // Pauza w powietrzu zabijala: klient dalej spada, serwer liczy kazdy taki
+            // ruch do fallDistance, kotwica ciagnie gracza z powrotem w gore - i licznik
+            // rosnie przez cala pauze. Po odmrozeniu przy pierwszym dotknieciu ziemi
+            // schodzilo tyle zycia, ile trwalo czekanie. Rachunek zerujemy co tick,
+            // wiec po pauzie gracz spada normalnie: z wysokosci, na ktorej stanal.
+            player.resetFallDistance();
+            player.setDeltaMovement(Vec3.ZERO);
+
             // Spowolnienie samo w sobie niczego nie gwarantuje (kotwica gwarantuje),
             // ale bez niego klient wciąż próbuje iść i gracz widzi szarpanie.
             if (refreshEffects) {
@@ -93,6 +101,8 @@ public final class Freeze {
         ANCHORS.clear();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             player.removeEffect(MobEffects.SLOWNESS);
+            // Ostatni tick pauzy zdazyl juz cos dolozyc - gra rusza z czystym licznikiem.
+            player.resetFallDistance();
         }
     }
 
