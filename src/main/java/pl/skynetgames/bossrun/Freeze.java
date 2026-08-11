@@ -6,12 +6,15 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
@@ -31,8 +34,11 @@ import java.util.UUID;
  */
 public final class Freeze {
 
-    /** Gdzie stał gracz w chwili zamrożenia. */
-    private static final Map<UUID, Vec3> ANCHORS = new HashMap<>();
+    /** Gdzie stał gracz w chwili zamrożenia — z wymiarem, bo same współrzędne kłamią. */
+    private record Anchor(ResourceKey<Level> dimension, Vec3 pos) {
+    }
+
+    private static final Map<UUID, Anchor> ANCHORS = new HashMap<>();
     private static boolean active;
 
     /** Dalej niż to od kotwicy = próba ruchu. Luz na drgania pozycji przy stawaniu. */
@@ -43,6 +49,13 @@ public final class Freeze {
     }
 
     public static void register() {
+        // Wanilkowe /tick freeze NIE zamraza graczy (TickRateManager.isEntityFrozen robi
+        // dla nich wyjatek), wiec przez cala pauze leci im utoniecie, ogien, lawa, glod,
+        // trucizna i marzniecie. W hardcore czekanie na kolege konczylo run. Moby i tak
+        // stoja, wiec tarcza nikomu nie daje przewagi - odbiera tylko smierc za czekanie.
+        ServerLivingEntityEvents.ALLOW_DAMAGE.register(
+                (entity, source, amount) -> !active || !(entity instanceof ServerPlayer));
+
         UseBlockCallback.EVENT.register((player, level, hand, hit) -> deny());
         UseItemCallback.EVENT.register((player, level, hand) -> deny());
         UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> deny());
@@ -64,12 +77,27 @@ public final class Freeze {
     public static void hold(MinecraftServer server, boolean refreshEffects) {
         active = true;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            Vec3 anchor = ANCHORS.computeIfAbsent(player.getUUID(), uuid -> player.position());
+            ResourceKey<Level> dimension = player.level().dimension();
+            Anchor anchor = ANCHORS.computeIfAbsent(player.getUUID(),
+                    uuid -> new Anchor(dimension, player.position()));
 
-            if (player.distanceToSqr(anchor) > SLACK_SQR) {
-                player.connection.teleport(anchor.x, anchor.y, anchor.z,
+            // Portal dziala i na pauzie (gracz tickuje normalnie). Ciagniecie go wtedy
+            // na stare wspolrzedne wsadziloby go w skale albo nad pustka po drugiej
+            // stronie - wiec zmiane wymiaru przyjmujemy i kotwiczymy od nowa.
+            if (!anchor.dimension().equals(dimension)) {
+                anchor = new Anchor(dimension, player.position());
+                ANCHORS.put(player.getUUID(), anchor);
+            }
+
+            if (player.distanceToSqr(anchor.pos()) > SLACK_SQR) {
+                player.connection.teleport(anchor.pos().x, anchor.pos().y, anchor.pos().z,
                         player.getYRot(), player.getXRot());
             }
+
+            // Powietrze schodzi przez cala pauze, a obrazenia od utoniecia sa tylko
+            // wstrzymane - bez tego gracz zamrozony pod woda dostawalby cala serie
+            // w pierwszej sekundzie po odmrozeniu.
+            player.setAirSupply(player.getMaxAirSupply());
 
             // Pauza w powietrzu zabijala: klient dalej spada, serwer liczy kazdy taki
             // ruch do fallDistance, kotwica ciagnie gracza z powrotem w gore - i licznik
