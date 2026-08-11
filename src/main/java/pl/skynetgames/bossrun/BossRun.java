@@ -59,12 +59,15 @@ public class BossRun implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTED.register(BossRun::onServerStarted);
         ServerTickEvents.END_SERVER_TICK.register(BossRun::tick);
         ServerLivingEntityEvents.AFTER_DEATH.register(BossRun::onDeath);
+        Freeze.register();
         CommandRegistrationCallback.EVENT.register((dispatcher, access, env) -> Cmd.register(dispatcher));
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             Hud.syncDeaths(server);
             greet(handler.getPlayer());
         });
+        ServerPlayConnectionEvents.DISCONNECT.register(
+                (handler, server) -> Freeze.forget(handler.getPlayer().getUUID()));
 
         LOG.info("Boss Run Hardcore gotowy");
     }
@@ -91,22 +94,49 @@ public class BossRun implements ModInitializer {
         }
 
         State s = State.get();
-        boolean shouldRun = s.running && !s.allBossesDown() && missingPlayers(server).isEmpty();
+        List<String> missing = missingPlayers(server);
+        boolean shouldRun = s.running && !s.allBossesDown() && missing.isEmpty();
 
         // setFrozen rozsyla pakiety do klientow, wiec wolamy je tylko przy zmianie stanu.
         if (server.tickRateManager().isFrozen() == shouldRun) {
             server.tickRateManager().setFrozen(!shouldRun);
         }
 
-        if (shouldRun) {
-            s.ticks++;
-            if (s.ticks % SAVE_EVERY_TICKS == 0) s.save();
+        boolean secondTick = ++tabCounter >= TAB_REFRESH_TICKS;
+        if (secondTick) tabCounter = 0;
+
+        // Strona WWW czyta ten sam plik stanu. Zapisujemy go przy zmianie pauzy albo
+        // skladu online - a nie co tick, bo to jedyne, co strone interesuje na biezaco.
+        if (s.frozen == shouldRun || !s.missing.equals(missing)) {
+            s.frozen = !shouldRun;
+            s.missing = new ArrayList<>(missing);
+            s.save();
         }
 
-        if (++tabCounter >= TAB_REFRESH_TICKS) {
-            tabCounter = 0;
-            Hud.pushTabList(server, status(server));
+        if (shouldRun) {
+            Freeze.release(server);
+            s.ticks++;
+            if (s.ticks % SAVE_EVERY_TICKS == 0) s.save();
+        } else {
+            // Zamrozony swiat zatrzymuje moby i czas, ale nie gracza - o to dba Freeze.
+            Freeze.hold(server, secondTick);
+            if (secondTick) Hud.actionBarAll(server, pauseReason(s, missing));
         }
+
+        if (secondTick) Hud.pushTabList(server, status(server));
+    }
+
+    /** Krotkie zdanie na pasku akcji: dlaczego stoimy. */
+    private static Component pauseReason(State s, List<String> missing) {
+        if (s.allBossesDown()) {
+            return Component.literal("✦ Wyzwanie ukonczone").withStyle(ChatFormatting.GOLD);
+        }
+        if (!s.running) {
+            return Component.literal("⏸ Wpisz /start, gdy caly sklad bedzie na serwerze")
+                    .withStyle(ChatFormatting.YELLOW);
+        }
+        return Component.literal("⏸ Czekamy na: " + String.join(", ", missing))
+                .withStyle(ChatFormatting.RED);
     }
 
     /** Nicki uczestnikow, ktorych brakuje na serwerze. Pusta lista = gra moze isc. */
@@ -214,6 +244,7 @@ public class BossRun implements ModInitializer {
     }
 
     private static void tickResetCountdown(MinecraftServer server) {
+        Freeze.hold(server, resetCountdown % 20 == 0);
         if (resetCountdown % 20 == 0) {
             int seconds = resetCountdown / 20;
             Hud.titleAll(server,

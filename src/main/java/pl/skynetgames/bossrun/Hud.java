@@ -86,6 +86,13 @@ public final class Hud {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) player.connection.send(packet);
     }
 
+    /** Pasek nad ekwipunkiem — miejsce na krotki komunikat, ktory nie zasmieca czatu. */
+    public static void actionBarAll(MinecraftServer server, Component text) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            player.sendSystemMessage(text, true);
+        }
+    }
+
     /** Wielki napis na srodku ekranu u wszystkich. Czasy w tickach. */
     public static void titleAll(MinecraftServer server, Component title, Component subtitle,
                                 int fadeIn, int stay, int fadeOut) {

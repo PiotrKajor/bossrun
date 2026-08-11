@@ -38,6 +38,15 @@ public class State {
     public Map<String, Integer> deaths = new LinkedHashMap<>();
     public List<String> bosses = new ArrayList<>();
 
+    // Ponizsze pola sa dla strony WWW, nie dla samej gry: mod jest jedynym miejscem,
+    // ktore wie, czy gra stoi i na kogo czeka. Bez nich strona musialaby to zgadywac.
+    /** Czy gra stoi (pauza albo brak startu). Strona po tym poznaje, czy tykac zegar. */
+    public boolean frozen = true;
+    /** Nicki uczestnikow, ktorych brakuje na serwerze. */
+    public List<String> missing = new ArrayList<>();
+    /** Kiedy ten plik ostatnio zapisano — strona dolicza czas, ktory uplynal od zapisu. */
+    public long savedAtMs = 0L;
+
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static State instance;
     private static Path file;
@@ -66,11 +75,13 @@ public class State {
         if (names == null) names = new LinkedHashMap<>();
         if (deaths == null) deaths = new LinkedHashMap<>();
         if (bosses == null) bosses = new ArrayList<>();
+        if (missing == null) missing = new ArrayList<>();
         if (attempt < 1) attempt = 1;
     }
 
     public void save() {
         if (file == null) return;
+        savedAtMs = System.currentTimeMillis();
         try {
             Files.createDirectories(file.getParent());
             Files.writeString(file, GSON.toJson(this));
