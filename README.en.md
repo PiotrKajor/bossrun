@@ -18,6 +18,8 @@ counted across every attempt and shown on the TAB list.
 &nbsp;
 ![License](https://img.shields.io/badge/license-MIT-3ddc84?style=for-the-badge)
 
+<img src="docs/media/banner.png" alt="Boss Run Hardcore — a chunk of the world tearing apart" width="820">
+
 </div>
 
 ---

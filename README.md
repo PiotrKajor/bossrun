@@ -18,6 +18,8 @@ podejścia i widać je na TAB-ie.
 &nbsp;
 ![Licencja](https://img.shields.io/badge/licencja-MIT-3ddc84?style=for-the-badge)
 
+<img src="docs/media/banner.png" alt="Boss Run Hardcore — kawałek świata pękający na pół" width="820">
+
 </div>
 
 ---
