@@ -1,4 +1,4 @@
-package pl.skynetgames.bossrun.mixin;
+package dev.kajor.bossrun.mixin;
 
 import net.minecraft.network.protocol.game.ServerboundContainerButtonClickPacket;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import pl.skynetgames.bossrun.Freeze;
+import dev.kajor.bossrun.Freeze;
 
 /**
  * Domknięcie pauzy na poziomie pakietów.

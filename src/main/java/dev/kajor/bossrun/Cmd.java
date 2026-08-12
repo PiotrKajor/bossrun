@@ -1,4 +1,4 @@
-package pl.skynetgames.bossrun;
+package dev.kajor.bossrun;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
@@ -28,17 +28,17 @@ public final class Cmd {
         MinecraftServer server = source.getServer();
         State s = State.get();
 
-        if (s.allBossesDown()) {
-            source.sendFailure(Component.literal("Bossowie juz padli — najpierw /reset."));
+        if (s.allGoalsDone()) {
+            source.sendFailure(Component.literal(Msg.of("start.already_complete")));
             return 0;
         }
         if (s.running) {
-            source.sendFailure(Component.literal("Wyzwanie juz trwa."));
+            source.sendFailure(Component.literal(Msg.of("start.already_running")));
             return 0;
         }
         List<ServerPlayer> online = server.getPlayerList().getPlayers();
         if (online.isEmpty()) {
-            source.sendFailure(Component.literal("Nie ma kogo zapisac — na serwerze pusto."));
+            source.sendFailure(Component.literal(Msg.of("start.nobody")));
             return 0;
         }
 
@@ -57,14 +57,12 @@ public final class Cmd {
         Hud.syncDeaths(server);
 
         Hud.titleAll(server,
-                Component.literal("▶ START").withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD),
-                Component.literal("podejscie #" + s.attempt + " · " + team)
+                Component.literal(Msg.of("start.title")).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD),
+                Component.literal(Msg.of("start.subtitle", s.attempt, team))
                         .withStyle(ChatFormatting.WHITE),
                 5, 60, 10);
         server.getPlayerList().broadcastSystemMessage(
-                Component.literal("▶ Wyzwanie wystartowalo. Sklad: " + team
-                                + ". Gdy ktos wyjdzie, czas i swiat staja.")
-                        .withStyle(ChatFormatting.GREEN), false);
+                Component.literal(Msg.of("start.chat", team)).withStyle(ChatFormatting.GREEN), false);
         return 1;
     }
 
@@ -74,8 +72,7 @@ public final class Cmd {
         Hud.syncDeaths(server);
         server.tickRateManager().setFrozen(true);
         server.getPlayerList().broadcastSystemMessage(
-                Component.literal("↺ Czas i zgony wyzerowane. Swiat zostaje — /start zaczyna nowe podejscie.")
-                        .withStyle(ChatFormatting.YELLOW), false);
+                Component.literal(Msg.of("reset.chat")).withStyle(ChatFormatting.YELLOW), false);
         return 1;
     }
 
@@ -83,31 +80,44 @@ public final class Cmd {
         CommandSourceStack source = ctx.getSource();
         State s = State.get();
 
-        source.sendSuccess(() -> Component.literal("☠ Boss Run — podejscie #" + s.attempt
-                + " · czas " + Hud.formatTime(s.ticks)
-                + " · bossowie " + s.bosses.size() + "/" + State.BOSS_IDS.size())
+        source.sendSuccess(() -> Component.literal(Msg.of("cmd.header", s.attempt,
+                Hud.formatTime(s.ticks), s.done.size(), Config.get().goals.size()))
                 .withStyle(ChatFormatting.GOLD), false);
 
+        // Cele wypisujemy zawsze - inaczej gracz nie ma jak sprawdzic, co wlasciwie
+        // wpisano w configu tego serwera.
+        for (Goal goal : Config.get().goals) {
+            boolean done = s.isDone(goal.target());
+            String etykieta = goal.label();
+            if (!done && goal.amount() > 1) {
+                etykieta += " (" + s.progressOf(goal.target()) + "/" + goal.amount() + ")";
+            }
+            String label = etykieta;
+            source.sendSuccess(() -> Component.literal(
+                            Msg.of("cmd.goal_line", done ? "✔" : "✖", label))
+                    .withStyle(done ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY), false);
+        }
+
         if (s.roster.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("Sklad nieustalony — wpisz /start.")
+            source.sendSuccess(() -> Component.literal(Msg.of("cmd.no_roster"))
                     .withStyle(ChatFormatting.GRAY), false);
         } else {
             for (String uuid : s.roster) {
                 String name = s.names.getOrDefault(uuid, uuid);
                 boolean online = source.getServer().getPlayerList()
                         .getPlayer(java.util.UUID.fromString(uuid)) != null;
-                source.sendSuccess(() -> Component.literal((online ? "● " : "○ ") + name
-                                + " — zgony: " + s.deathsOf(uuid))
+                source.sendSuccess(() -> Component.literal(Msg.of("cmd.player",
+                                online ? "● " : "○ ", name, s.deathsOf(uuid)))
                         .withStyle(online ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY), false);
             }
         }
 
         List<String> missing = BossRun.missingPlayers(source.getServer());
         Component line = !s.running
-                ? Component.literal("⏸ czekam na /start").withStyle(ChatFormatting.YELLOW)
+                ? Component.literal(Msg.of("status.await_start")).withStyle(ChatFormatting.YELLOW)
                 : missing.isEmpty()
-                ? Component.literal("▶ gra trwa").withStyle(ChatFormatting.GREEN)
-                : Component.literal("⏸ zamrozone — brakuje: " + String.join(", ", missing))
+                ? Component.literal(Msg.of("status.running")).withStyle(ChatFormatting.GREEN)
+                : Component.literal(Msg.of("status.frozen", String.join(", ", missing)))
                         .withStyle(ChatFormatting.RED);
         source.sendSuccess(() -> line, false);
         return 1;

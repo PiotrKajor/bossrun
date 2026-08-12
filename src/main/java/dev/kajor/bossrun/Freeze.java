@@ -1,4 +1,4 @@
-package pl.skynetgames.bossrun;
+package dev.kajor.bossrun;
 
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;

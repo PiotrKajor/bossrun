@@ -1,7 +1,8 @@
-package pl.skynetgames.bossrun;
+package dev.kajor.bossrun;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.annotations.SerializedName;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,17 +15,12 @@ import java.util.Map;
 /**
  * Caly trwaly stan wyzwania w jednym pliku JSON - i celowo POZA folderem swiata,
  * bo swiat kasujemy przy kazdej smierci. Zgony, sklad druzyny i numer podejscia
- * musza to przezyc; czas i zabici bossowie nie - te zeruje sam mod przed resetem.
+ * musza to przezyc; czas i odhaczone cele nie - te zeruje sam mod przed resetem.
  *
  * Klasa nie dotyka zadnej klasy Minecrafta, dzieki czemu SelfTest sprawdza ja
  * bez uruchamiania serwera.
  */
 public class State {
-
-    /** Bossowie do pokonania - kolejnosc = kolejnosc wyswietlania na TAB-ie. */
-    public static final List<String> BOSS_IDS = List.of(
-            "minecraft:ender_dragon", "minecraft:wither",
-            "minecraft:elder_guardian", "minecraft:warden");
 
     public int attempt = 1;
     public boolean running = false;
@@ -36,7 +32,17 @@ public class State {
     public List<String> roster = new ArrayList<>();
     public Map<String, String> names = new LinkedHashMap<>();
     public Map<String, Integer> deaths = new LinkedHashMap<>();
-    public List<String> bosses = new ArrayList<>();
+
+    /**
+     * Odhaczone cele (po {@code target}). W JSON-ie klucz zostaje "bosses" z czasow, gdy
+     * wyzwaniem byly wylacznie cztery bossy: stare pliki stanu wczytuja sie bez migracji,
+     * a strona WWW czyta ten sam klucz.
+     */
+    @SerializedName("bosses")
+    public List<String> done = new ArrayList<>();
+
+    /** Postep celow liczonych na sztuki (KILL z amount > 1). */
+    public Map<String, Integer> progress = new LinkedHashMap<>();
 
     // Ponizsze pola sa dla strony WWW, nie dla samej gry: mod jest jedynym miejscem,
     // ktore wie, czy gra stoi i na kogo czeka. Bez nich strona musialaby to zgadywac.
@@ -74,7 +80,8 @@ public class State {
         if (roster == null) roster = new ArrayList<>();
         if (names == null) names = new LinkedHashMap<>();
         if (deaths == null) deaths = new LinkedHashMap<>();
-        if (bosses == null) bosses = new ArrayList<>();
+        if (done == null) done = new ArrayList<>();
+        if (progress == null) progress = new LinkedHashMap<>();
         if (missing == null) missing = new ArrayList<>();
         if (attempt < 1) attempt = 1;
     }
@@ -100,23 +107,41 @@ public class State {
         save();
     }
 
-    /** @return true, jesli to pierwszy raz w tym podejsciu (czyli warto oglosic). */
-    public boolean addBoss(String id) {
-        if (!BOSS_IDS.contains(id) || bosses.contains(id)) return false;
-        bosses.add(id);
+    public boolean isDone(String target) {
+        return done.contains(target);
+    }
+
+    public void addDone(String target) {
+        if (!done.contains(target)) {
+            done.add(target);
+            save();
+        }
+    }
+
+    /** @return ile sztuk tego celu juz zaliczono. */
+    public int addProgress(String target) {
+        int n = progress.merge(target, 1, Integer::sum);
         save();
+        return n;
+    }
+
+    public int progressOf(String target) {
+        return progress.getOrDefault(target, 0);
+    }
+
+    public boolean allGoalsDone() {
+        for (Goal goal : Config.get().goals) {
+            if (!done.contains(goal.target())) return false;
+        }
         return true;
     }
 
-    public boolean allBossesDown() {
-        return bosses.size() >= BOSS_IDS.size();
-    }
-
-    /** Nowy swiat po smierci: czas i bossowie od zera, zgony i sklad zostaja. */
+    /** Nowy swiat po smierci: czas i cele od zera, zgony i sklad zostaja. */
     public void nextAttempt() {
         attempt++;
         ticks = 0L;
-        bosses.clear();
+        done.clear();
+        progress.clear();
         save();
     }
 
@@ -129,7 +154,8 @@ public class State {
         roster.clear();
         names.clear();
         deaths.clear();
-        bosses.clear();
+        done.clear();
+        progress.clear();
         save();
     }
 }

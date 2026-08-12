@@ -39,5 +39,5 @@ tasks.withType(JavaCompile).configureEach {
 tasks.register('selfTest', JavaExec) {
     group = 'verification'
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'pl.skynetgames.bossrun.SelfTest'
+    mainClass = 'dev.kajor.bossrun.SelfTest'
 }

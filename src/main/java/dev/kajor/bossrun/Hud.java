@@ -1,4 +1,4 @@
-package pl.skynetgames.bossrun;
+package dev.kajor.bossrun;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -28,13 +28,6 @@ public final class Hud {
 
     private static final String OBJECTIVE = "bossrun_zgony";
 
-    /** Ladne nazwy bossow - id z rejestru nie nadaje sie na ekran. */
-    private static final Map<String, String> BOSS_NAMES = Map.of(
-            "minecraft:ender_dragon", "Ender Dragon",
-            "minecraft:wither", "Wither",
-            "minecraft:elder_guardian", "Elder Guardian",
-            "minecraft:warden", "Warden");
-
     /** Scoreboard siedzi w folderze swiata, wiec po kazdym resecie trzeba go zbudowac od nowa. */
     public static void setup(MinecraftServer server) {
         Scoreboard sb = server.getScoreboard();
@@ -63,22 +56,27 @@ public final class Hud {
         State s = State.get();
 
         Component header = Component.empty()
-                .append(Component.literal("☠ BOSS RUN HARDCORE ☠\n")
+                .append(Component.literal(Msg.of("tab.title") + "\n")
                         .withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD))
-                .append(Component.literal("podejscie #" + s.attempt + "  ")
+                .append(Component.literal(Msg.of("tab.attempt", s.attempt))
                         .withStyle(ChatFormatting.GRAY))
                 .append(Component.literal("⏱ " + formatTime(s.ticks))
                         .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
 
         MutableComponent footer = Component.literal("\n");
-        for (String id : State.BOSS_IDS) {
-            boolean down = s.bosses.contains(id);
-            footer.append(Component.literal((down ? "✔ " : "✖ ") + BOSS_NAMES.get(id) + "   ")
-                    .withStyle(down ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY));
+        for (Goal goal : Config.get().goals) {
+            boolean done = s.isDone(goal.target());
+            // Cel liczony na sztuki pokazuje postep, zeby TAB nie klamal, ze nic sie nie dzieje.
+            String etykieta = goal.label();
+            if (!done && goal.amount() > 1) {
+                etykieta += " " + s.progressOf(goal.target()) + "/" + goal.amount();
+            }
+            footer.append(Component.literal((done ? "✔ " : "✖ ") + etykieta + "   ")
+                    .withStyle(done ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY));
         }
         footer.append(Component.literal("\n")).append(status);
         if (s.bestTicks > 0) {
-            footer.append(Component.literal("\n★ rekord: " + formatTime(s.bestTicks))
+            footer.append(Component.literal("\n" + Msg.of("tab.record", formatTime(s.bestTicks)))
                     .withStyle(ChatFormatting.YELLOW));
         }
 

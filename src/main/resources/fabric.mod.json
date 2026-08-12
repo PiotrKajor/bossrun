@@ -3,15 +3,20 @@
   "id": "bossrun",
   "version": "${version}",
   "name": "Boss Run Hardcore",
-  "description": "Hardcore na cztery bossy (Ender Dragon, Wither, Elder Guardian, Warden). Smierc kogokolwiek z druzyny resetuje swiat, czas leci tylko przy komplecie graczy, zgony przezywaja reset i widac je na TAB-ie.",
+  "description": "Hardcore challenge with configurable goals - four bosses by default. Anyone on the team dies and the world is wiped; the clock only runs while the whole team is online.",
   "authors": [
-    "SkynetGames"
+    "Piotr Kajor"
   ],
+  "contact": {
+    "homepage": "https://github.com/PiotrKajor/bossrun",
+    "sources": "https://github.com/PiotrKajor/bossrun",
+    "issues": "https://github.com/PiotrKajor/bossrun/issues"
+  },
   "license": "MIT",
   "environment": "server",
   "entrypoints": {
     "main": [
-      "pl.skynetgames.bossrun.BossRun"
+      "dev.kajor.bossrun.BossRun"
     ]
   },
   "mixins": [
