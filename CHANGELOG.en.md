@@ -9,6 +9,14 @@
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [SemVer](https://semver.org/).
 
+## [1.3.1] — 2026-08-15
+
+### Changed
+
+- **The filename carries the loader and the game version:** `bossrun-fabric-26.2-1.3.1.jar`
+  instead of `bossrun-1.3.0.jar`. The mod is tied to one Minecraft release and the mod
+  version alone never said which.
+
 ## [1.3.0] — 2026-08-13
 
 ### Added

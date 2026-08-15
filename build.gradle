@@ -6,7 +6,10 @@ version = project.mod_version
 group = project.maven_group
 
 base {
-    archivesName = project.archives_base_name
+    // Nazwa pliku niesie silnik i wersje gry - sama wersja moda nie mowi, na czym jar
+    // pojdzie, a mod jest przywiazany do konkretnego wydania Minecrafta.
+    def mcRange = (project.findProperty('mc_range') ?: project.minecraft_version) as String
+    archivesName = "${project.archives_base_name}-fabric-${mcRange}"
 }
 
 dependencies {
