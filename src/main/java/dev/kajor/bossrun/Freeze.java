@@ -5,14 +5,12 @@ import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
-import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -57,7 +55,7 @@ public final class Freeze {
                 (entity, source, amount) -> !active || !(entity instanceof ServerPlayer));
 
         UseBlockCallback.EVENT.register((player, level, hand, hit) -> deny());
-        UseItemCallback.EVENT.register((player, level, hand) -> deny());
+        Compat.blokujUzyciePrzedmiotu(() -> active);   // ten jeden event zwraca inny typ na starszych wydaniach
         UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> deny());
         AttackBlockCallback.EVENT.register((player, level, hand, pos, direction) -> deny());
         AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> deny());
@@ -110,8 +108,7 @@ public final class Freeze {
             // Spowolnienie samo w sobie niczego nie gwarantuje (kotwica gwarantuje),
             // ale bez niego klient wciąż próbuje iść i gracz widzi szarpanie.
             if (refreshEffects) {
-                player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 40, 255,
-                        false, false, false));
+                Compat.spowolnij(player);
             }
 
             // Skrzynia czy stół rzemieślniczy otwarte tuż przed pauzą byłyby luką:
@@ -128,7 +125,7 @@ public final class Freeze {
         active = false;
         ANCHORS.clear();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            player.removeEffect(MobEffects.SLOWNESS);
+            Compat.odspowolnij(player);
             // Ostatni tick pauzy zdazyl juz cos dolozyc - gra rusza z czystym licznikiem.
             player.resetFallDistance();
         }

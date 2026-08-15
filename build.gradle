@@ -1,10 +1,11 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'fabric-loom' version "${loom_version}"
 }
 
 // Jedna era Minecrafta = jeden jar. Roznice API siedza w src/compat/<era>/Compat.java,
 // era przychodzi z -Pcompat_era (matryca w tools/build_all.py).
-def era = (project.findProperty('compat_era') ?: 'mc26') as String
+def era = (project.findProperty('compat_era') ?: 'mc21') as String
+def javaVer = ((project.findProperty('java_version') ?: '21') as String) as int
 
 version = project.mod_version
 group = project.maven_group
@@ -19,27 +20,33 @@ base {
 sourceSets.main.java.srcDir "src/compat/${era}/java"
 
 dependencies {
-    // MC 26.x jest wydawany bez obfuskacji - dlatego zadnego bloku 'mappings'
+    // Galaz dla wydan 1.20-1.21.x: Minecraft jest tu jeszcze obfuskowany, wiec sa
+    // mapowania i remap zaleznosci. ID pluginu MUSI byc 'fabric-loom' - alias
+    // 'net.fabricmc.fabric-loom' wlacza w Loomie tryb bez obfuskacji (dla 26.x).
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
 processResources {
     def ver = project.version
     inputs.property 'version', ver
+    def mcDepend = (project.findProperty('mc_depend') ?: '>=1.21.5 <1.21.11') as String
+    inputs.property 'mc_depend', mcDepend
+    inputs.property 'java_depend', javaVer
     filesMatching('fabric.mod.json') {
-        expand version: ver
+        expand version: ver, mc_depend: mcDepend, java_depend: javaVer
     }
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.toVersion(javaVer)
+    targetCompatibility = JavaVersion.toVersion(javaVer)
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
+    it.options.release = javaVer
     it.options.encoding = 'UTF-8'
 }
 
