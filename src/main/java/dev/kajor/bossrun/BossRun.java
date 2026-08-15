@@ -78,7 +78,7 @@ public class BossRun implements ModInitializer {
 
     private static void onServerStarted(MinecraftServer server) {
         // Config i stan lezą w config/, nie w swiecie - swiat znika przy kazdym resecie.
-        Path configDir = server.getServerDirectory().resolve("config");
+        Path configDir = Compat.katalogSerwera(server).resolve("config");
         Config.load(configDir.resolve("bossrun-config.json"));
         Msg.load(configDir.resolve("bossrun-messages.json"));
         State.load(configDir.resolve("bossrun.json"));
@@ -267,7 +267,7 @@ public class BossRun implements ModInitializer {
         State s = State.get();
         s.nextAttempt();
         try {
-            Files.writeString(server.getServerDirectory().resolve(RESET_FLAG),
+            Files.writeString(Compat.katalogSerwera(server).resolve(RESET_FLAG),
                     "attempt=" + s.attempt + "\nvictim=" + victim + "\n");
         } catch (IOException e) {
             // Gdy swiatem zajmuje sie skrypt na hoscie, brak pliku znaczy brak resetu -
@@ -294,7 +294,7 @@ public class BossRun implements ModInitializer {
         deleteWorldOnStop = false;
 
         Path world = server.getWorldPath(LevelResource.LEVEL_DATA_FILE).getParent();
-        if (!WorldWipe.safe(server.getServerDirectory(), world)) return;
+        if (!WorldWipe.safe(Compat.katalogSerwera(server), world)) return;
         try {
             int skasowane = WorldWipe.delete(world);
             LOG.info("Swiat skasowany: {} ({} plikow). Nowy powstanie przy nastepnym starcie.",
