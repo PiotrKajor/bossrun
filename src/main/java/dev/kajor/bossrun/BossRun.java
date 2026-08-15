@@ -7,7 +7,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -202,14 +201,14 @@ public class BossRun implements ModInitializer {
             // Widz spoza skladu moze ginac do woli - swiata to nie dotyczy.
             if (!s.roster.contains(player.getUUID().toString())) return;
 
-            s.addDeath(player.getUUID().toString(), player.getGameProfile().name());
+            s.addDeath(player.getUUID().toString(), Compat.nick(player));
             Hud.syncDeaths(server);
-            beginReset(server, player.getGameProfile().name());
+            beginReset(server, Compat.nick(player));
             return;
         }
 
         if (!s.running || s.allGoalsDone()) return;
-        String id = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
+        String id = Compat.idBytu(entity);
         if (Goals.onKill(server, id) && s.allGoalsDone()) victory(server);
     }
 

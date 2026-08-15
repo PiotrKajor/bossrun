@@ -2,6 +2,10 @@ plugins {
     id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
+// Jedna era Minecrafta = jeden jar. Roznice API siedza w src/compat/<era>/Compat.java,
+// era przychodzi z -Pcompat_era (matryca w tools/build_all.py).
+def era = (project.findProperty('compat_era') ?: 'mc26') as String
+
 version = project.mod_version
 group = project.maven_group
 
@@ -11,6 +15,8 @@ base {
     def mcRange = (project.findProperty('mc_range') ?: project.minecraft_version) as String
     archivesName = "${project.archives_base_name}-fabric-${mcRange}"
 }
+
+sourceSets.main.java.srcDir "src/compat/${era}/java"
 
 dependencies {
     // MC 26.x jest wydawany bez obfuskacji - dlatego zadnego bloku 'mappings'

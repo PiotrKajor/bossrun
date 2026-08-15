@@ -1,14 +1,11 @@
 package dev.kajor.bossrun;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 
 import java.util.UUID;
 
@@ -73,17 +70,15 @@ public final class Goals {
     private static boolean spelniony(Goal goal, ServerPlayer player) {
         return switch (goal.type()) {
             case HAVE -> policzPrzedmiot(player, goal.target()) >= goal.amount();
-            case REACH -> player.level().dimension().identifier().toString().equals(goal.target());
+            case REACH -> Compat.wymiar(player).equals(goal.target());
             case ADVANCEMENT -> maOsiagniecie(player, goal.target());
             case KILL -> false;   // liczone eventem, nie skanowaniem
         };
     }
 
     private static int policzPrzedmiot(ServerPlayer player, String itemId) {
-        Identifier id = Identifier.tryParse(itemId);
-        if (id == null) return 0;
-        Item item = BuiltInRegistries.ITEM.getValue(id);
-        if (item == Items.AIR) return 0;
+        Item item = Compat.przedmiot(itemId);
+        if (item == null) return 0;
 
         int n = 0;
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
@@ -95,16 +90,12 @@ public final class Goals {
 
     /** Osiagniecia sa publicznym API serwera, wiec obchodzimy sie bez mixinu w PlayerAdvancements. */
     private static boolean maOsiagniecie(ServerPlayer player, String advancementId) {
-        Identifier id = Identifier.tryParse(advancementId);
-        if (id == null) return false;
-        MinecraftServer server = player.level().getServer();
-        if (server == null) return false;
-        var holder = server.getAdvancements().get(id);
-        if (holder == null) {
+        Boolean ma = Compat.maOsiagniecie(player, advancementId);
+        if (ma == null) {
             BossRun.LOG.warn("Cel wskazuje na nieznane osiagniecie: {}", advancementId);
             return false;
         }
-        return player.getAdvancements().getOrStartProgress(holder).isDone();
+        return ma;
     }
 
     private static void announce(MinecraftServer server, Goal goal) {

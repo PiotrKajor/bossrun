@@ -8,7 +8,6 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.Permissions;
 
 import java.util.List;
 
@@ -18,7 +17,7 @@ public final class Cmd {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("start").executes(Cmd::start));
         dispatcher.register(Commands.literal("reset")
-                .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
+                .requires(Compat::operator)
                 .executes(Cmd::reset));
         dispatcher.register(Commands.literal("bossrun").executes(Cmd::status));
     }
@@ -48,9 +47,9 @@ public final class Cmd {
         for (ServerPlayer player : online) {
             String uuid = player.getUUID().toString();
             s.roster.add(uuid);
-            s.names.put(uuid, player.getGameProfile().name());
+            s.names.put(uuid, Compat.nick(player));
             s.deaths.putIfAbsent(uuid, 0);
-            team.append(team.isEmpty() ? "" : ", ").append(player.getGameProfile().name());
+            team.append(team.isEmpty() ? "" : ", ").append(Compat.nick(player));
         }
         s.running = true;
         s.save();
