@@ -33,10 +33,16 @@ processResources {
     def ver = project.version
     inputs.property 'version', ver
     def mcDepend = (project.findProperty('mc_depend') ?: '>=1.21.5 <1.21.11') as String
+    // Na 1.20-1.21.x gracze maja loader 0.15-0.17; wymog 0.19.3 (z ery 26.x) wywalilby moda.
+    def loaderDepend = (project.findProperty('loader_depend') ?: '>=0.15.0') as String
     inputs.property 'mc_depend', mcDepend
     inputs.property 'java_depend', javaVer
-    filesMatching('fabric.mod.json') {
-        expand version: ver, mc_depend: mcDepend, java_depend: javaVer
+    inputs.property 'loader_depend', loaderDepend
+    // Mixin odrzuca poziom zgodnosci, ktorego nie zna - JAVA_25 wywala moda na 1.20.x
+    // zanim cokolwiek sie wczyta, wiec poziom jedzie z ta sama wartoscia co java_depend.
+    filesMatching(['fabric.mod.json', 'bossrun.mixins.json']) {
+        expand version: ver, mc_depend: mcDepend, java_depend: javaVer,
+                loader_depend: loaderDepend
     }
 }
 

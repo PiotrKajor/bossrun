@@ -14,7 +14,7 @@ counted across every attempt and shown on the TAB list.
 
 [![Download jar](https://img.shields.io/badge/Download-bossrun.jar-4fb4ff?style=for-the-badge)](../../releases/latest)
 &nbsp;
-![Minecraft](https://img.shields.io/badge/Minecraft%2026.2%20%7C%20Fabric-2a3245?style=for-the-badge)
+![Minecraft](https://img.shields.io/badge/Minecraft%201.20.4%E2%80%9326.2%20%7C%20Fabric-2a3245?style=for-the-badge)
 &nbsp;
 ![License](https://img.shields.io/badge/license-MIT-3ddc84?style=for-the-badge)
 
@@ -25,7 +25,8 @@ counted across every attempt and shown on the TAB list.
 ---
 
 **Server-side** — players need nothing installed, everything runs on vanilla packets.
-Requires [Fabric API](https://modrinth.com/mod/fabric-api) and Java 25 (MC 26.2).
+Requires [Fabric API](https://modrinth.com/mod/fabric-api). Runs on Minecraft **1.20.4 – 26.2** —
+one jar per API era, details below.
 
 ## What it does
 
@@ -110,14 +111,34 @@ client — you change the values in that file and that is it. Keys you leave alo
 `config/bossrun.json` — deliberately **outside** the world folder, because the world disappears on
 every death. It holds deaths, the team, the attempt number and the record.
 
+## Minecraft versions
+
+Pick the jar by its name — it carries the loader and the range of game versions:
+
+| File | Minecraft | Java |
+|------|-----------|------|
+| `bossrun-fabric-1.20.4-1.21.4-<version>.jar` | 1.20.4 – 1.21.4 | 17 |
+| `bossrun-fabric-1.21.5-1.21.10-<version>.jar` | 1.21.5 – 1.21.10 | 21 |
+| `bossrun-fabric-1.21.11-<version>.jar` | 1.21.11 | 21 |
+| `bossrun-fabric-26.2-<version>.jar` | 26.2 | 25 |
+
+The era boundaries are exactly where Mojang changed things: effects moved to `Holder` in
+1.21.2, the server directory went from `File` to `Path`, 1.21.11 renamed `ResourceLocation`
+to `Identifier` and dropped numbered permissions, and 26.x ships unobfuscated. Each
+difference lives in one file (`src/compat/<era>/Compat.java`); the rest of the code is shared.
+
+**It will not go below 1.20.4**: the whole pause mechanic rests on vanilla `/tick freeze`
+(`TickRateManager`), which earlier releases simply do not have.
+
 ## Building
 
 ```bash
-./gradlew build      # → build/libs/bossrun-<version>.jar
-./gradlew selfTest   # counters, persistence, time format and the world-deletion safety belts
+python3 tools/build_all.py   # every era at once → dist/
+./gradlew build              # the 26.2 era only → build/libs/
+./gradlew selfTest           # counters, persistence, time format and the world-deletion safety belts
 ```
 
-Requires JDK 25 (MC 26.x). Drop the jar into `mods/` next to Fabric API for 26.2.
+Requires JDK 25 (the 26.x era) and 21 (the rest, branch `mc21`).
 
 ## License
 

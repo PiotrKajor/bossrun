@@ -9,6 +9,30 @@
 Format wg [Keep a Changelog](https://keepachangelog.com/pl/1.1.0/),
 wersjonowanie wg [SemVer](https://semver.org/lang/pl/).
 
+## [1.4.0] — 2026-08-15
+
+### Dodane
+
+- **Minecraft od 1.20.4 do 26.2.** Wcześniej mod chodził wyłącznie na 26.2. Teraz wychodzi
+  w czterech jarach — po jednym na erę API: `1.20.4–1.21.4`, `1.21.5–1.21.10`, `1.21.11`
+  i `26.2`. Różnice między erami (efekty przez `Holder`, katalog serwera jako `File`/`Path`,
+  `ResourceLocation` → `Identifier`, nazwane uprawnienia, `UseItemCallback` z innym typem
+  zwrotnym) siedzą w `src/compat/<era>/Compat.java`; reszta moda jest wspólna.
+- **`tools/build_all.py`** — buduje wszystkie ery jednym poleceniem; ery 1.20–1.21.x żyją
+  na gałęzi `mc21` (klasyczny Loom z mapowaniami), 26.x na `master`.
+
+### Naprawione
+
+- **Wymóg loadera i poziom zgodności mixina jadą teraz z erą.** Zaszyte na sztywno
+  `fabricloader >=0.19.3` i `JAVA_25` wywalały moda przy starcie na 1.20.x, zanim
+  cokolwiek zdążyło się wczytać — jedno przez brak kandydata na zależność, drugie przez
+  nieznany poziom zgodności.
+
+### Uwaga
+
+- **Poniżej 1.20.4 mod nie zejdzie.** Pauza stoi na wanilkowym `/tick freeze`
+  (`TickRateManager`), którego starsze wydania nie mają — bez tego nie ma czego zamrażać.
+
 ## [1.3.1] — 2026-08-15
 
 ### Zmienione

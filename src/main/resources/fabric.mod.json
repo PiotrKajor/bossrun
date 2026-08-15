@@ -23,7 +23,7 @@
     "bossrun.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.19.3",
+    "fabricloader": "${loader_depend}",
     "minecraft": "${mc_depend}",
     "java": ">=${java_depend}",
     "fabric-api": "*"
