@@ -10,13 +10,15 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 
 /**
- * Era 1.20.4 - 1.21.4.
+ * Era 1.20.1.
  *
  * Wszystko, co Mojang zmienil miedzy wydaniami, siedzi w tej jednej klasie: po jednym
  * pliku na ere, w src/compat/<era>. Reszta moda jest wspolna i o zadnej roznicy nie wie.
  *
- * Tu: identyfikatory to jeszcze ResourceLocation, uprawnienia sa numerowane, a GameProfile
- * jest zwykla klasa z getName().
+ * Tu jak w 1.20.4, poza dwiema rzeczami:
+ *  - osiagniecia zwraca sie jako Advancement, nie AdvancementHolder (ten wszedl w 1.20.2),
+ *  - nie ma TickRateManagera - komenda /tick i cale zamrazanie czasu weszly dopiero
+ *    w 1.20.4, wiec pauze skladamy z regul gry.
  */
 final class Compat {
     private Compat() {}
@@ -53,9 +55,9 @@ final class Compat {
         if (id == null) return false;
         MinecraftServer server = player.level().getServer();
         if (server == null) return false;
-        var holder = server.getAdvancements().get(id);
-        if (holder == null) return null;   // null = nieznane, wolajacy to zaloguje
-        return player.getAdvancements().getOrStartProgress(holder).isDone();
+        var advancement = server.getAdvancements().getAdvancement(id);
+        if (advancement == null) return null;   // null = nieznane, wolajacy to zaloguje
+        return player.getAdvancements().getOrStartProgress(advancement).isDone();
     }
 
     /** Katalog serwera; do 1.21.1 API zwraca File, nie Path. */
@@ -85,16 +87,56 @@ final class Compat {
         });
     }
 
-    /** Zamrozenie swiata. Od 1.20.4 robi to wanilkowy TickRateManager (to samo, co /tick freeze). */
+    // --- Pauza bez TickRateManagera -----------------------------------------
+    // 1.20.1 nie zna /tick freeze, wiec czasu nie da sie zatrzymac jednym przelacznikiem.
+    // Skladamy go z regul gry: doba, pogoda, spawny, ogien, losowe ticki. Ruchu juz
+    // zyjacych mobow to nie zatrzyma, ale krzywdy nie zrobia - Freeze i tak odrzuca
+    // kazde obrazenie gracza podczas pauzy (ALLOW_DAMAGE), wiec czekanie jest bezpieczne.
+    private static final java.util.List<net.minecraft.world.level.GameRules.Key<
+            net.minecraft.world.level.GameRules.BooleanValue>> WYLACZANE = java.util.List.of(
+            net.minecraft.world.level.GameRules.RULE_DAYLIGHT,
+            net.minecraft.world.level.GameRules.RULE_WEATHER_CYCLE,
+            net.minecraft.world.level.GameRules.RULE_DOMOBSPAWNING,
+            net.minecraft.world.level.GameRules.RULE_DOFIRETICK,
+            net.minecraft.world.level.GameRules.RULE_DOINSOMNIA,
+            net.minecraft.world.level.GameRules.RULE_MOBGRIEFING);
+
+    private static final java.util.Map<net.minecraft.world.level.GameRules.Key<
+            net.minecraft.world.level.GameRules.BooleanValue>, Boolean> POPRZEDNIE =
+            new java.util.HashMap<>();
+    private static int poprzedniRandomTick = -1;
+    private static boolean zamrozone;
+
     static void zamrozenie(MinecraftServer server, boolean wlaczone) {
-        server.tickRateManager().setFrozen(wlaczone);
+        if (wlaczone == zamrozone) return;
+        zamrozone = wlaczone;
+        net.minecraft.world.level.GameRules zasady = server.getGameRules();
+        if (wlaczone) {
+            POPRZEDNIE.clear();
+            for (var klucz : WYLACZANE) {
+                POPRZEDNIE.put(klucz, zasady.getBoolean(klucz));
+                zasady.getRule(klucz).set(false, server);
+            }
+            poprzedniRandomTick = zasady.getInt(net.minecraft.world.level.GameRules.RULE_RANDOMTICKING);
+            zasady.getRule(net.minecraft.world.level.GameRules.RULE_RANDOMTICKING).set(0, server);
+        } else {
+            for (var klucz : WYLACZANE) {
+                zasady.getRule(klucz).set(POPRZEDNIE.getOrDefault(klucz, Boolean.TRUE), server);
+            }
+            if (poprzedniRandomTick >= 0) {
+                zasady.getRule(net.minecraft.world.level.GameRules.RULE_RANDOMTICKING)
+                        .set(poprzedniRandomTick, server);
+            }
+        }
     }
 
+    /** Wlasna flaga - w 1.20.1 nie ma wanilkowego stanu, o ktory mozna by zapytac. */
     static boolean czyZamrozone(MinecraftServer server) {
-        return server.tickRateManager().isFrozen();
+        return zamrozone;
     }
 
-    /** Cel na TAB-ie. Od 1.20.3 slot to enum DisplaySlot, a addObjective ma dwa pola wiecej. */
+    /** Cel na TAB-ie. W 1.20.1 addObjective ma cztery pola, a sloty sa liczbami:
+     *  LIST to 0 (enum DisplaySlot wszedl dopiero w 1.20.3). */
     static net.minecraft.world.scores.Objective celTabu(
             net.minecraft.world.scores.Scoreboard sb, String nazwa,
             net.minecraft.network.chat.Component tytul) {
@@ -102,16 +144,15 @@ final class Compat {
         if (cel == null) {
             cel = sb.addObjective(nazwa,
                     net.minecraft.world.scores.criteria.ObjectiveCriteria.DUMMY, tytul,
-                    net.minecraft.world.scores.criteria.ObjectiveCriteria.RenderType.INTEGER,
-                    false, null);
+                    net.minecraft.world.scores.criteria.ObjectiveCriteria.RenderType.INTEGER);
         }
-        sb.setDisplayObjective(net.minecraft.world.scores.DisplaySlot.LIST, cel);
+        sb.setDisplayObjective(0, cel);
         return cel;
     }
 
-    /** Wynik gracza; od 1.20.4 adresuje sie go przez ScoreHolder, nie po nicku. */
+    /** Wynik gracza; w 1.20.1 adresuje sie go nickiem, a setter nazywa sie setScore. */
     static void ustawWynik(net.minecraft.world.scores.Scoreboard sb, ServerPlayer gracz,
                            net.minecraft.world.scores.Objective cel, int wartosc) {
-        sb.getOrCreatePlayerScore(gracz, cel).set(wartosc);
+        sb.getOrCreatePlayerScore(gracz.getScoreboardName(), cel).setScore(wartosc);
     }
 }

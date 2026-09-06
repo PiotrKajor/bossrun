@@ -79,4 +79,34 @@ final class Compat {
                 pauza.getAsBoolean() ? net.minecraft.world.InteractionResult.FAIL
                                      : net.minecraft.world.InteractionResult.PASS);
     }
+
+    /** Zamrozenie swiata. Od 1.20.4 robi to wanilkowy TickRateManager (to samo, co /tick freeze). */
+    static void zamrozenie(MinecraftServer server, boolean wlaczone) {
+        server.tickRateManager().setFrozen(wlaczone);
+    }
+
+    static boolean czyZamrozone(MinecraftServer server) {
+        return server.tickRateManager().isFrozen();
+    }
+
+    /** Cel na TAB-ie. Od 1.20.3 slot to enum DisplaySlot, a addObjective ma dwa pola wiecej. */
+    static net.minecraft.world.scores.Objective celTabu(
+            net.minecraft.world.scores.Scoreboard sb, String nazwa,
+            net.minecraft.network.chat.Component tytul) {
+        net.minecraft.world.scores.Objective cel = sb.getObjective(nazwa);
+        if (cel == null) {
+            cel = sb.addObjective(nazwa,
+                    net.minecraft.world.scores.criteria.ObjectiveCriteria.DUMMY, tytul,
+                    net.minecraft.world.scores.criteria.ObjectiveCriteria.RenderType.INTEGER,
+                    false, null);
+        }
+        sb.setDisplayObjective(net.minecraft.world.scores.DisplaySlot.LIST, cel);
+        return cel;
+    }
+
+    /** Wynik gracza; od 1.20.4 adresuje sie go przez ScoreHolder, nie po nicku. */
+    static void ustawWynik(net.minecraft.world.scores.Scoreboard sb, ServerPlayer gracz,
+                           net.minecraft.world.scores.Objective cel, int wartosc) {
+        sb.getOrCreatePlayerScore(gracz, cel).set(wartosc);
+    }
 }

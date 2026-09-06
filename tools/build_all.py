@@ -4,6 +4,8 @@
 Jedna era = jeden zestaw API, czyli jeden jar. Granice er to miejsca, w których coś
 w Minecrafcie pękło — nie kolejne wydania gry:
 
+    1.20.1            bez TickRateManagera (/tick freeze wszedl w 1.20.4) - pauza z regul gry;
+                      osiagniecia jako Advancement, nie AdvancementHolder
     1.20.4 – 1.21.4   MobEffects.MOVEMENT_SLOWDOWN, efekt bez Holdera, getServerDirectory()
                       zwraca File, UseItemCallback oddaje InteractionResultHolder
     1.21.5 – 1.21.10  efekty przez Holder, katalog serwera jako Path
@@ -11,9 +13,11 @@ w Minecrafcie pękło — nie kolejne wydania gry:
                       GameProfile jako rekord — czyli już to samo, co w 26.x
     26.x              Minecraft bez obfuskacji: inny build.gradle, gałąź master
 
-Dolna granica to 1.20.4, bo mod stoi na `/tick freeze` (TickRateManager), którego
-wcześniejsze wydania po prostu nie mają — zamrożenie czasu jest tu całą mechaniką,
-nie ozdobą.
+Era 1.20.1 istnieje dla serwera Superbohaterów: Palladium i wszystkie jego dodatki
+są przyszpilone do 1.20.1, a `/tick freeze` (TickRateManager) wszedł dopiero w 1.20.4.
+Zamrożenie czasu składa się tam z reguł gry — istniejące moby dalej chodzą, ale
+`Freeze` i tak odrzuca każde obrażenie gracza podczas pauzy, więc czekanie jest
+bezpieczne.
 
 Różnice mieszkają w src/compat/<era>/Compat.java; ery 1.20–1.21.x są na gałęzi `mc21`
 (klasyczny Loom z mapowaniami), 26.x na `master`.
@@ -36,6 +40,9 @@ JDK = {17: "/usr/lib/jvm/java-21-openjdk-amd64",
        25: "/opt/jdk-25"}
 
 ERY = [
+    {"era": "mc201", "galaz": "mc21", "mc": "1.20.1", "fapi": "0.92.2+1.20.1", "java": 17,
+     "range": "1.20.1", "depend": ">=1.20.1 <1.20.2", "loader": ">=0.14.0",
+     "gry": ["1.20.1"]},
     {"era": "mc20", "galaz": "mc21", "mc": "1.20.4", "fapi": "0.97.3+1.20.4", "java": 17,
      "range": "1.20.4-1.21.4", "depend": ">=1.20.4 <1.21.5", "loader": ">=0.15.0",
      "gry": ["1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4"]},
