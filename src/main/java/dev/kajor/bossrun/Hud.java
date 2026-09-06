@@ -9,10 +9,8 @@ import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
-import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 
 import java.util.List;
 import java.util.Map;
@@ -30,14 +28,9 @@ public final class Hud {
 
     /** Scoreboard siedzi w folderze swiata, wiec po kazdym resecie trzeba go zbudowac od nowa. */
     public static void setup(MinecraftServer server) {
-        Scoreboard sb = server.getScoreboard();
-        Objective obj = sb.getObjective(OBJECTIVE);
-        if (obj == null) {
-            obj = sb.addObjective(OBJECTIVE, ObjectiveCriteria.DUMMY,
-                    Component.literal("☠").withStyle(ChatFormatting.RED),
-                    ObjectiveCriteria.RenderType.INTEGER, false, null);
-        }
-        sb.setDisplayObjective(DisplaySlot.LIST, obj);
+        // Tworzenie celu i slot TAB-a roznia sie miedzy wydaniami - siedza w Compat.
+        Compat.celTabu(server.getScoreboard(), OBJECTIVE,
+                Component.literal("☠").withStyle(ChatFormatting.RED));
     }
 
     public static void syncDeaths(MinecraftServer server) {
@@ -48,7 +41,7 @@ public final class Hud {
         Scoreboard sb = player.level().getServer().getScoreboard();
         Objective obj = sb.getObjective(OBJECTIVE);
         if (obj == null) return;
-        sb.getOrCreatePlayerScore(player, obj).set(State.get().deathsOf(player.getUUID().toString()));
+        Compat.ustawWynik(sb, player, obj, State.get().deathsOf(player.getUUID().toString()));
     }
 
     /** Naglowek i stopka TAB-a. Wysylane raz na sekunde - czesciej nikt nie zauwazy. */

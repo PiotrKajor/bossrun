@@ -107,8 +107,8 @@ public class BossRun implements ModInitializer {
         boolean shouldRun = s.running && !s.allGoalsDone() && komplet;
 
         // setFrozen rozsyla pakiety do klientow, wiec wolamy je tylko przy zmianie stanu.
-        if (server.tickRateManager().isFrozen() == shouldRun) {
-            server.tickRateManager().setFrozen(!shouldRun);
+        if (Compat.czyZamrozone(server) == shouldRun) {
+            Compat.zamrozenie(server, !shouldRun);
         }
 
         boolean secondTick = ++tabCounter >= TAB_REFRESH_TICKS;
@@ -217,7 +217,7 @@ public class BossRun implements ModInitializer {
         s.running = false;
         if (s.bestTicks == 0L || s.ticks < s.bestTicks) s.bestTicks = s.ticks;
         s.save();
-        server.tickRateManager().setFrozen(true);
+        Compat.zamrozenie(server, true);
 
         Hud.titleAll(server,
                 Component.literal(Msg.of("victory.title"))
@@ -235,7 +235,7 @@ public class BossRun implements ModInitializer {
         victim = who;
         resetCountdown = Config.get().resetCountdownTicks();
         // Podczas odliczania nikt juz nic nie zmieni - zamrazamy, zeby nie zginal nikt drugi.
-        server.tickRateManager().setFrozen(true);
+        Compat.zamrozenie(server, true);
         server.getPlayerList().broadcastSystemMessage(
                 Component.literal(Msg.of("death.chat", who))
                         .withStyle(ChatFormatting.RED, ChatFormatting.BOLD), false);

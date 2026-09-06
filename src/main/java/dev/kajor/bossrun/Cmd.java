@@ -69,7 +69,7 @@ public final class Cmd {
         MinecraftServer server = ctx.getSource().getServer();
         State.get().wipe();
         Hud.syncDeaths(server);
-        server.tickRateManager().setFrozen(true);
+        Compat.zamrozenie(server, true);
         server.getPlayerList().broadcastSystemMessage(
                 Component.literal(Msg.of("reset.chat")).withStyle(ChatFormatting.YELLOW), false);
         return 1;
