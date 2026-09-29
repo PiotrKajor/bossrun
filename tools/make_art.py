@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
-"""Sklada ikone projektu i baner z tego, co w tym modzie jest naprawde wlasne:
-znikajacego swiata.
-
-Kategoria "hardcore" na Modrincie to same serca - zlote, czerwone, przekreslone. Serce
-wygladaloby jak kazdy inny mod obok. Tresc Boss Runa jest inna: to nie gracz umiera,
-tylko SWIAT idzie do kosza. Ikona pokazuje wiec kawalek terenu pekajacy na pol, z rozzarzona
-szczelina i blokami odpadajacymi w ciemnosc.
+"""Sklada ikone projektu i baner: pikselowa czaszka z zarzacymi sie oczodolami.
 
 Rysujemy na grubej siatce (16 kratek na bok), bo ikona ma byc czytelna w 48 px na liscie -
 drobne detale i tak by tam zniknely, a kanciasty ksztalt czyta sie od razu jako Minecraft.
+Zar w oczach ma ten sam pomaranczowy, co napis HARDCORE na banerze.
 
 Uzycie:  python3 tools/make_art.py
          FONT_DIR=/sciezka/do/fontow python3 tools/make_art.py   # dla banera
@@ -18,92 +13,85 @@ Baner potrzebuje Antonio i Poppins (oba SIL OFL, Google Fonts). Nie trzymamy ich
 bez nich powstaje sama ikona.
 """
 import os
-import random
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 WYNIK = Path(__file__).resolve().parent.parent / "docs" / "media"
 FONTY = Path(os.environ.get("FONT_DIR", "/usr/share/fonts"))
 
-TLO = (16, 10, 12)          # prawie czern z czerwona nuta - niebezpieczenstwo bez krzyku
-TRAWA = (86, 130, 62)
-TRAWA_CIEN = (62, 96, 45)
-ZIEMIA = (110, 78, 54)
-KAMIEN = (108, 108, 116)
-KAMIEN_CIEN = (74, 74, 82)
-SZCZELINA = (255, 116, 58)   # rozgrzana krawedz pekniecia
-SZCZELINA_JASNA = (255, 214, 150)
+TLO = (10, 6, 8)
+TLO_POSWIATA = (40, 14, 16)  # czerwonawy srodek - niebezpieczenstwo bez krzyku
+ZAR = (255, 116, 58)
 
-# Szerokosc kolejnych rzedow terenu w kratkach, liczona od szczeliny w kazda strone.
-# Wyspa zwezajaca sie ku dolowi - kanciasty klin, nie prostokat.
-RZEDY = [5, 5, 5, 4, 4, 3, 2, 1]
-ZIARNO = 5
-
-
-def _kolor(r, losowy):
-    if r == 0:
-        return TRAWA
-    if r == 1:
-        return TRAWA_CIEN if losowy < .3 else ZIEMIA
-    if r == 2:
-        return ZIEMIA
-    return KAMIEN_CIEN if losowy < .35 else KAMIEN
+CZASZKA = [
+    "....KKKKKKKK....",
+    "...KWWWWWWWWK...",
+    "..KWWWWWWWWWSK..",
+    "..KWWWWWWWWWSK..",
+    "..KWWWWWWWWWSK..",
+    "..KWEEEWWEEESK..",
+    "..KWEOEWWEOESK..",
+    "..KWEEEWWEEESK..",
+    "..KWWWWEEWWWSK..",
+    "...KWWWEEWWSK...",
+    "....KWWWWWSK....",
+    "....KWEWEWEK....",
+    "....KWWWWWSK....",
+    ".....KKKKKK.....",
+]
+KOLORY = {"K": (24, 16, 18), "W": (236, 228, 206), "S": (186, 176, 152), "E": (40, 20, 22), "O": ZAR}
 
 
-def wyspa(rys, srodek_x, gora_y, kratka, spadek=2):
-    """Teren rozdarty wzdluz srodka. Prawa polowa osuwa sie o kilka kratek w dol -
-    to samo pekniecie, co w opisie moda: swiat rozlatuje sie po jednej smierci.
-    Krawedzie zwrocone do szczeliny sa rozgrzane, wiec oko idzie prosto do rozdarcia."""
-    random.seed(ZIARNO)
-    for r, szer in enumerate(RZEDY):
-        for polowa, znak in ((0, -1), (1, 1)):
-            y = gora_y + (r + (spadek if polowa else 0)) * kratka
-            for i in range(szer):
-                kolor = _kolor(r, random.random())
-                if i == 0 and r < 5:                       # kratka przy samej szczelinie
-                    kolor = SZCZELINA_JASNA if r == 0 else SZCZELINA
-                x = srodek_x + (i if znak > 0 else -i - 1) * kratka
-                rys.rectangle([x, y, x + kratka - 2, y + kratka - 2], fill=kolor)
+def _poswiata(im, box, promien, kolor):
+    maska = Image.new("L", im.size, 0)
+    ImageDraw.Draw(maska).ellipse(box, fill=255)
+    maska = maska.filter(ImageFilter.GaussianBlur(promien))
+    return Image.composite(Image.new("RGB", im.size, kolor), im, maska)
 
 
-def odpryski(rys, srodek_x, gora_y, kratka, spadek=2):
-    """Kilka blokow juz wypadlo ze szczeliny - to one robia z pekniecia ruch.
-    Lecą w dol wzdluz rozdarcia, nie po calym kafelku, zeby nie wygladaly na szum."""
-    for dx, dy, ubytek in ((0.2, 8.6, 6), (1.1, 9.8, 10), (-0.9, 10.6, 12), (0.6, 11.6, 16)):
-        bok = kratka - ubytek
-        x = srodek_x + dx * kratka
-        y = gora_y + (dy + spadek) * kratka
-        rys.rectangle([x, y, x + bok, y + bok], fill=KAMIEN_CIEN)
+def czaszka(im, ox, oy, kratka):
+    """Najpierw zar pod oczodolami, potem twardy cien, na koncu same piksele."""
+    for y, rzad in enumerate(CZASZKA):
+        for x, c in enumerate(rzad):
+            if c == "O":
+                sx, sy = ox + x * kratka + kratka // 2, oy + y * kratka + kratka // 2
+                im = _poswiata(im, (sx - kratka, sy - kratka, sx + kratka, sy + kratka),
+                               kratka * 0.7, (255, 90, 30))
+    rys = ImageDraw.Draw(im)
+    for przes, cien in ((kratka // 3, True), (0, False)):
+        for y, rzad in enumerate(CZASZKA):
+            for x, c in enumerate(rzad):
+                if c in KOLORY:
+                    x0, y0 = ox + x * kratka + przes, oy + y * kratka + przes
+                    rys.rectangle([x0, y0, x0 + kratka - 1, y0 + kratka - 1],
+                                  fill=(0, 0, 0) if cien else KOLORY[c])
+    return im
 
 
 def ikona(bok=512):
     im = Image.new("RGB", (bok, bok), TLO)
-    rys = ImageDraw.Draw(im)
-    kratka = bok // 16
-    wyspa(rys, bok // 2, kratka * 2, kratka)
-    odpryski(rys, bok // 2, kratka * 2, kratka)
-    return im
+    im = _poswiata(im, (60, 60, bok - 60, bok - 60), 90, TLO_POSWIATA)
+    kratka = bok * 28 // 512
+    return czaszka(im, (bok - 16 * kratka) // 2, (bok - len(CZASZKA) * kratka) // 2, kratka)
 
 
 def baner(szer=1280, wys=640):
     im = Image.new("RGB", (szer, wys), TLO)
+    im = _poswiata(im, (80, 80, 560, 560), 110, TLO_POSWIATA)
+    kratka = 28
+    im = czaszka(im, 320 - 8 * kratka, (wys - len(CZASZKA) * kratka) // 2, kratka)
     rys = ImageDraw.Draw(im)
-    kratka = 38
-    # Wyzej niz w ikonie, zeby spadajace bloki zmiescily sie nad dolna krawedzia.
-    wyspa(rys, 300, 66, kratka)
-    odpryski(rys, 300, 66, kratka)
-
-    rys.text((640, 232), "BOSS RUN",
+    rys.text((640, 150), "BOSS RUN",
              font=ImageFont.truetype(str(FONTY / "Antonio-VariableFont_wght.ttf"), 104),
              fill=(240, 236, 236))
-    rys.text((642, 330), "HARDCORE",
+    rys.text((642, 248), "HARDCORE",
              font=ImageFont.truetype(str(FONTY / "Antonio-VariableFont_wght.ttf"), 104),
-             fill=SZCZELINA)
-    rys.text((646, 452), "One death and the world is gone.",
+             fill=ZAR)
+    rys.text((646, 390), "One death and the world is gone.",
              font=ImageFont.truetype(str(FONTY / "Poppins-Medium.ttf"), 29),
              fill=(198, 168, 164))
-    rys.text((646, 506), "Fabric · Minecraft 26.2",
+    rys.text((646, 444), "Fabric · Minecraft 1.20.4 – 26.2",
              font=ImageFont.truetype(str(FONTY / "Poppins-Regular.ttf"), 23),
              fill=(126, 104, 102))
     return im
