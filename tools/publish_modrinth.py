@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_all import ERY, REPO, DIST  # noqa: E402
 
 PROJEKT = "pgcCo8DO"          # modrinth.com/mod/boss-run-hardcore
+ZRODLA = "https://github.com/PiotrKajor/bossrun"
 SEKRETY = Path("/etc/skynet/secrets")
 ZALEZNOSCI = [{"project_id": "P7dR8mSH", "dependency_type": "required"}]   # Fabric API
 # Ery wyróżnione na stronie projektu — Modrinth pozwala na pięć, ale wyróżnianie
@@ -56,6 +57,11 @@ def main() -> int:
     if wgraj and not token:
         sys.exit("BŁĄD: brak MODRINTH_TOKEN w /etc/skynet/secrets")
     opis = changelog(wersja)
+    # Modrinth wstrzymał projekt na miesiąc, bo link do źródeł dawał 404 (prywatne repo).
+    kod = subprocess.run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", ZRODLA],
+                         capture_output=True, text=True).stdout
+    if kod != "200":
+        sys.exit(f"BŁĄD: {ZRODLA} zwraca {kod} — repo musi być publiczne, zanim cokolwiek wgrasz")
 
     for wpis in ERY:
         jar = DIST / f"bossrun-fabric-{wpis['range']}-{wersja}.jar"
@@ -93,12 +99,13 @@ def main() -> int:
         if not odp.get("id"):
             print(f"  ODRZUCONE: {odp.get('description', r.stdout[:200])}")
             return 1
-        # Mod gra po obu stronach (HUD u gracza) — pole jest dopiero w v3.
+        # fabric.mod.json ma "environment": "server" — klient go nie wczyta, singleplayer też
+        # nie (serwer musi się sam zrestartować). Pole jest dopiero w v3.
         subprocess.run(["curl", "-s", "-X", "PATCH",
                         f"https://api.modrinth.com/v3/version/{odp['id']}",
                         "-H", f"Authorization: {token}",
                         "-H", "Content-Type: application/json",
-                        "-d", json.dumps({"environment": "client_and_server"})],
+                        "-d", json.dumps({"environment": "dedicated_server_only"})],
                        capture_output=True)
         print(f"  wgrane: {odp['id']}")
 
